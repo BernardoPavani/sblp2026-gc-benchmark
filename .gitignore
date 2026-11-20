@@ -1,0 +1,17 @@
+# Suíte DaCapo (baixada separadamente pelo usuário)
+dacapo/
+*.jar
+*.zip
+
+# Logs brutos gerados em novas execuções locais
+logs/
+scratch/
+
+# Arquivos temporários de R, Python e SO
+.Rhistory
+.RData
+.Rproj.user/
+Rplots.pdf
+__pycache__/
+*.pyc
+.DS_Store
