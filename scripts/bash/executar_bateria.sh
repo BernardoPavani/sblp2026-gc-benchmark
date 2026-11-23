@@ -50,27 +50,29 @@ executar_um_benchmark() {
     extra_flags+=("-Dsys.ai.h2o.debug.allowJavaVersions=21")
   fi
 
+  mkdir -p "${DIR_LOGS}/${bench_nome}/G1" "${DIR_LOGS}/${bench_nome}/ZGC"
+
   echo "======================================================================"
   echo " INICIANDO BATERIA: $bench_nome ($bench_cli) | N=$REPETICOES | CPUs=$NUCLEOS"
   echo "======================================================================"
 
-  for HEAP in "${HEAPS[@]}"; do
-    for COLETOR in "${COLETORES[@]}"; do
-      local dir_saida="${DIR_LOGS}/${bench_nome}/${COLETOR}"
-      mkdir -p "$dir_saida"
+  for ((i=1; i<=REPETICOES; i++)); do
+    echo ">>> RODADA GLOBAL: $i/$REPETICOES ($bench_nome) <<<"
 
-      local gc_flags=()
-      if [[ "$COLETOR" == "G1" ]]; then
-        gc_flags+=("-XX:+UseG1GC")
-      else
-        gc_flags+=("-XX:+UseZGC" "-XX:+ZGenerational")
-      fi
-
-      for ((i=1; i<=REPETICOES; i++)); do
+    for HEAP in "${HEAPS[@]}"; do
+      for COLETOR in "${COLETORES[@]}"; do
+        local dir_saida="${DIR_LOGS}/${bench_nome}/${COLETOR}"
         local log_gc="${dir_saida}/gc_heap${HEAP}_it${i}.log"
         local log_dacapo="${dir_saida}/dacapo_heap${HEAP}_it${i}.txt"
 
-        echo "[$(date '+%H:%M:%S')] $bench_nome | Heap=$HEAP | GC=$COLETOR | Iteração $i/$REPETICOES"
+        local gc_flags=()
+        if [[ "$COLETOR" == "G1" ]]; then
+          gc_flags+=("-XX:+UseG1GC")
+        else
+          gc_flags+=("-XX:+UseZGC" "-XX:+ZGenerational")
+        fi
+
+        echo "  [$(date '+%H:%M:%S')] Heap=$HEAP | GC=$COLETOR | Rodada $i/$REPETICOES"
 
         # 1. Higienização do cache de páginas do sistema operacional
         sync && echo 3 | sudo tee /proc/sys/vm/drop_caches > /dev/null
@@ -88,11 +90,12 @@ executar_um_benchmark() {
           -n 5 \
           -no-pre-iteration-gc \
           > "$log_dacapo" 2>&1 || echo "AVISO: falha em $bench_nome ($HEAP/$COLETOR/it$i)"
-
-        # 3. Resfriamento térmico entre execuções
-        sleep 15
       done
     done
+
+    # 3. Resfriamento térmico ao fim de cada rodada global
+    echo "Resfriando o processador por 15s..."
+    sleep 15
   done
 }
 
